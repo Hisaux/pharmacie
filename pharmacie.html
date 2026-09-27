@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pharmacie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F4EE;
+    --ink:#20302B;
+    --ink-soft:#5B6B64;
+    --line:#DDD8CB;
+    --card:#FFFFFF;
+    --alert:#A65D57;
+    --alert-bg:#F6E9E7;
+    --ok:#6B8F71;
+
+    /* couleurs par forme galénique */
+    --f-comprime:#C9A227;
+    --f-gelule:#6B8F71;
+    --f-sirop:#4C6E91;
+    --f-injection:#A65D57;
+    --f-patch:#8C7AA9;
+    --f-goutte:#3E8E8A;
+    --f-autre:#8A8378;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; height:100%;
+    background:var(--paper); color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  body{ max-width:520px; margin:0 auto; padding:0 16px 32px; }
+
+  header{ padding:22px 2px 10px; }
+  header h1{
+    font-family:'Fraunces',serif; font-weight:560;
+    font-size:28px; margin:0 0 2px; letter-spacing:-0.01em;
+  }
+  header p{ margin:0; color:var(--ink-soft); font-size:13.5px; }
+
+  .banner{
+    display:none; align-items:center; gap:10px;
+    background:var(--alert-bg); color:var(--alert);
+    border:1px solid #E4C6C2; border-radius:10px;
+    padding:10px 12px; font-size:13.5px; margin:10px 0 4px;
+  }
+  .banner.show{ display:flex; }
+  .banner b{ font-weight:600; }
+
+  nav.moments{
+    display:flex; gap:6px; margin:16px 0 14px;
+    border-bottom:1px solid var(--line);
+  }
+  nav.moments button{
+    flex:1; background:none; border:none; cursor:pointer;
+    font-family:'Inter'; font-size:13.5px; color:var(--ink-soft);
+    padding:9px 4px 11px; position:relative;
+  }
+  nav.moments button.active{ color:var(--ink); font-weight:600; }
+  nav.moments button.active::after{
+    content:""; position:absolute; left:8%; right:8%; bottom:-1px; height:2px;
+    background:var(--ink);
+  }
+
+  .liste{ display:flex; flex-direction:column; gap:10px; }
+
+  .med{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:13px 14px; display:flex; align-items:center; gap:12px;
+  }
+  .med.pris{ opacity:0.45; }
+  .pastille{
+    width:11px; height:11px; border-radius:50%; flex:none;
+    background:var(--f-autre);
+  }
+  .med .infos{ flex:1; min-width:0; }
+  .med .infos .nom{ font-size:15px; font-weight:600; line-height:1.25; }
+  .med .infos .meta{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; display:flex; gap:8px; flex-wrap:wrap; }
+  .stock-bas{ color:var(--alert); font-weight:600; }
+  .rupture-tag{
+    font-size:11px; font-weight:600; color:var(--alert);
+    border:1px solid #E4C6C2; background:var(--alert-bg);
+    border-radius:999px; padding:1px 7px;
+  }
+
+  .check{
+    width:28px; height:28px; border-radius:50%; flex:none;
+    border:1.5px solid var(--line); background:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--ok); font-size:16px;
+  }
+  .check.done{ background:var(--ok); border-color:var(--ok); color:#fff; }
+
+  .actions{
+    display:flex; gap:10px; margin-top:20px;
+  }
+  .btn{
+    flex:1; border-radius:11px; border:1px solid var(--line);
+    background:var(--card); padding:12px 10px; text-align:center;
+    font-size:13.5px; font-weight:600; color:var(--ink); cursor:pointer;
+  }
+  .btn.primaire{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+
+  section.stock{ margin-top:30px; }
+  section.stock h2{
+    font-family:'Fraunces',serif; font-weight:560; font-size:18px; margin:0 0 10px;
+  }
+  .stock-row{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 0; border-bottom:1px solid var(--line); font-size:14px;
+  }
+  .stock-row:last-child{ border-bottom:none; }
+  .stock-row .nom{ flex:1; }
+  .stock-row .qte{ color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+
+  footer{
+    margin-top:30px; padding-top:14px; border-top:1px solid var(--line);
+    font-size:11.5px; color:var(--ink-soft); display:flex; justify-content:space-between;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pharmacie</h1>
+  <p id="sousTitre">—</p>
+</header>
+
+<div class="banner" id="banner"><span>⚠</span><span><b>Rupture signalée</b> — <span id="banniereTexte"></span></span></div>
+
+<nav class="moments" id="moments"></nav>
+
+<div class="liste" id="liste"></div>
+
+<div class="actions">
+  <button class="btn" id="btnValiderTout">Valider tout le moment</button>
+  <button class="btn primaire" id="btnScan">Scanner une boîte</button>
+</div>
+
+<section class="stock">
+  <h2>Stock</h2>
+  <div id="stockListe"></div>
+</section>
+
+<footer>
+  <span id="compteUtilisateur">hisaux@icloud.com</span>
+  <span id="dateMaj"></span>
+</footer>
+
+<script>
+/* ---------------------------------------------------------------
+   Source de données : ce fichier attend un objet `pharmacieData`
+   au format défini dans le projet (medicaments[], historique_prises[]).
+   En production, Scriptable injecte ces données (via un pont JS,
+   par ex. window.pharmacieData = {...} avant le chargement, ou un
+   message handler) après lecture du JSON sur iCloud Drive. Ici,
+   des données d'exemple permettent de visualiser l'interface.
+------------------------------------------------------------------ */
+
+const FORME_COULEUR = {
+  "comprimé": "var(--f-comprime)",
+  "gélule": "var(--f-gelule)",
+  "sirop": "var(--f-sirop)",
+  "injection": "var(--f-injection)",
+  "patch": "var(--f-patch)",
+  "goutte": "var(--f-goutte)",
+};
+
+const MOMENTS = ["matin", "midi", "soir", "coucher"];
+
+const dataExemple = {
+  medicaments: [
+    { cip13:"3400930000001", nom:"Doliprane 1000mg", forme:"comprimé", couleur:null, stock:12, seuil_alerte:4, moments:["matin","soir"], rupture_nationale:false },
+    { cip13:"3400930000002", nom:"Levothyrox 75µg", forme:"comprimé", couleur:null, stock:3, seuil_alerte:5, moments:["matin"], rupture_nationale:true },
+    { cip13:"3400930000003", nom:"Vitamine D", forme:"gélule", couleur:null, stock:20, seuil_alerte:5, moments:["matin"], rupture_nationale:false },
+    { cip13:"3400930000004", nom:"Toplexil", forme:"sirop", couleur:null, stock:1, seuil_alerte:2, moments:["soir","coucher"], rupture_nationale:false },
+  ],
+  historique_prises: []
+};
+
+const data = window.pharmacieData || dataExemple;
+let momentActif = MOMENTS[0];
+
+function couleurForme(m){
+  return m.couleur || FORME_COULEUR[m.forme] || "var(--f-autre)";
+}
+
+function estPrisAujourdhui(cip13, moment){
+  const aujourdhui = new Date().toISOString().slice(0,10);
+  return data.historique_prises.some(p => p.cip13===cip13 && p.moment===moment && p.date===aujourdhui);
+}
+
+function marquerPris(cip13, moment){
+  const aujourdhui = new Date().toISOString().slice(0,10);
+  if(estPrisAujourdhui(cip13, moment)) return;
+  data.historique_prises.push({date:aujourdhui, moment, cip13, heure_confirmee:new Date().toTimeString().slice(0,5)});
+  // TODO intégration Scriptable : persister data.historique_prises dans pharmacie.json (iCloud)
+  render();
+}
+
+function renderNav(){
+  const nav = document.getElementById("moments");
+  nav.innerHTML = "";
+  MOMENTS.forEach(m => {
+    const b = document.createElement("button");
+    b.textContent = m.charAt(0).toUpperCase()+m.slice(1);
+    if(m===momentActif) b.classList.add("active");
+    b.onclick = () => { momentActif = m; render(); };
+    nav.appendChild(b);
+  });
+}
+
+function renderListe(){
+  const liste = document.getElementById("liste");
+  liste.innerHTML = "";
+  const meds = data.medicaments.filter(m => m.moments.includes(momentActif));
+  if(meds.length===0){
+    liste.innerHTML = `<p style="color:var(--ink-soft); font-size:13.5px; padding:10px 2px;">Rien de prévu à ce moment.</p>`;
+    return;
+  }
+  meds.forEach(m => {
+    const pris = estPrisAujourdhui(m.cip13, momentActif);
+    const stockBas = m.stock <= m.seuil_alerte;
+    const el = document.createElement("div");
+    el.className = "med" + (pris ? " pris" : "");
+    el.innerHTML = `
+      <span class="pastille" style="background:${couleurForme(m)}"></span>
+      <div class="infos">
+        <div class="nom">${m.nom}</div>
+        <div class="meta">
+          <span class="${stockBas ? "stock-bas" : ""}">${m.stock} en stock</span>
+          ${m.rupture_nationale ? `<span class="rupture-tag">Rupture</span>` : ""}
+        </div>
+      </div>
+      <button class="check ${pris ? "done" : ""}" title="Valider la prise">${pris ? "✓" : ""}</button>
+    `;
+    el.querySelector(".check").onclick = () => marquerPris(m.cip13, momentActif);
+    liste.appendChild(el);
+  });
+}
+
+function renderStock(){
+  const cont = document.getElementById("stockListe");
+  cont.innerHTML = "";
+  data.medicaments.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).forEach(m => {
+    const row = document.createElement("div");
+    row.className = "stock-row";
+    row.innerHTML = `
+      <span class="pastille" style="background:${couleurForme(m)}"></span>
+      <span class="nom">${m.nom}</span>
+      <span class="qte ${m.stock<=m.seuil_alerte ? "stock-bas":""}">${m.stock}</span>
+    `;
+    cont.appendChild(row);
+  });
+}
+
+function renderBanniere(){
+  const enRupture = data.medicaments.filter(m => m.rupture_nationale);
+  const banner = document.getElementById("banner");
+  if(enRupture.length){
+    banner.classList.add("show");
+    document.getElementById("banniereTexte").textContent = enRupture.map(m=>m.nom).join(", ");
+  } else {
+    banner.classList.remove("show");
+  }
+}
+
+function render(){
+  renderNav();
+  renderListe();
+  renderStock();
+  renderBanniere();
+  const total = data.medicaments.reduce((s,m)=>s+ (m.moments.includes(momentActif)?1:0),0);
+  document.getElementById("sousTitre").textContent = `${total} médicament${total>1?"s":""} — ${momentActif}`;
+  document.getElementById("dateMaj").textContent = new Date().toLocaleDateString("fr-FR", {day:"numeric", month:"short"});
+}
+
+document.getElementById("btnValiderTout").onclick = () => {
+  data.medicaments.filter(m => m.moments.includes(momentActif)).forEach(m => marquerPris(m.cip13, momentActif));
+};
+
+document.getElementById("btnScan").onclick = () => {
+  // TODO : à remplacer par l'appel vers le Raccourci de scan (ex: window.location = "shortcuts://run-shortcut?name=Scanner%20une%20boite")
+  alert("Ouverture du scanner — à relier au Raccourci de scan Datamatrix.");
+};
+
+render();
+</script>
+</body>
+</html>
