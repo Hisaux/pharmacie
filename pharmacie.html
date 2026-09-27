@@ -186,8 +186,29 @@ const dataExemple = {
 const data = window.pharmacieData || dataExemple;
 let momentActif = MOMENTS[0];
 
+// Les libellés réels de forme_pharma (base gouvernementale) sont
+// composés, ex: "comprimé pelliculé sécable", "poudre pour solution
+// buvable en sachet-dose" — on fait donc une correspondance par
+// mot-clé plutôt qu'une égalité stricte sur `forme`.
+const MOTS_CLES_FORME = [
+  ["comprimé", "f-comprime"],
+  ["gélule", "f-gelule"],
+  ["capsule", "f-gelule"],
+  ["sirop", "f-sirop"],
+  ["solution buvable", "f-sirop"],
+  ["suspension buvable", "f-sirop"],
+  ["injectable", "f-injection"],
+  ["patch", "f-patch"],
+  ["dispositif transdermique", "f-patch"],
+  ["goutte", "f-goutte"],
+  ["collyre", "f-goutte"],
+];
+
 function couleurForme(m){
-  return m.couleur || FORME_COULEUR[m.forme] || "var(--f-autre)";
+  if(m.couleur) return m.couleur;
+  const forme = (m.forme || "").toLowerCase();
+  const trouve = MOTS_CLES_FORME.find(([mot]) => forme.includes(mot));
+  return trouve ? `var(--${trouve[1]})` : "var(--f-autre)";
 }
 
 function estPrisAujourdhui(cip13, moment){
