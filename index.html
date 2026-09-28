@@ -384,6 +384,398 @@ document.getElementById("btnScan").onclick = () => {
 };
 
 /* ---------- Connexion (vérifiée côté Scriptable) ---------- */
+let modeCreation = false;
+let demandeId = 0;
+const $ = id => document.getElementById(id);
+
+function statut(msg, erreur){
+  $("statut").textContent = msg || "";
+  $("statut").classList.toggle("erreur", !!erreur);
+}
+
+function basculer(creation){
+  modeCreation = creation;
+  $("modaleTitre").textContent = creation ? "1re connexion" : "Connexion";
+  $("modaleSous").textContent = creation ? "Créez votre accès à la pharmacie." : "Accédez à votre pharmacie.";
+  $("blocConfirm").classList.toggle("cache", !creation);
+  $("btnValider").textContent = creation ? "Créer mon accès" : "Se connecter";
+  $("btnBascule").textContent = creation ? "Retour à la connexion" : "1re connexion";
+  $("mdp").setAttribute("autocomplete", creation ? "new-password" : "current-password");
+  statut("");
+}
+
+function ouvrirModale(){
+  $("mdp").value = ""; $("mdp2").value = ""; statut("");
+  $("voile").classList.add("show");
+}
+
+function passerEnDemo(){
+  authentifie = false;
+  data = JSON.parse(JSON.stringify(dataExemple));
+  document.body.classList.add("demo");
+  $("compteUtilisateur").textContent = "Mode démo";
+  $("voile").classList.remove("show");
+  render();
+}
+
+$("btnValider").onclick = () => {
+  const email = $("email").value.trim();
+  const mdp = $("mdp").value;
+  if(!email || !mdp){ statut("Renseignez l'e-mail et le mot de passe.", true); return; }
+  if(modeCreation){
+    if(mdp.length < 8){ statut("8 caractères minimum.", true); return; }
+    if(mdp !== $("mdp2").value){ statut("Les mots de passe ne correspondent pas.", true); return; }
+  }
+  statut("Vérification…");
+  $("btnValider").disabled = true;
+  const mon = ++demandeId;
+  window.__demande = { id: mon, type: modeCreation ? "creer" : "connexion", email, mdp };
+  $("mdp").value = ""; $("mdp2").value = "";
+  // Si Scriptable ne répond pas (page ouverte hors du script Pharmacie)
+  setTimeout(() => {
+    if($("btnValider").disabled && mon === demandeId){
+      $("btnValider").disabled = false;
+      statut("Pas de réponse de Scriptable — ouvrez cette page depuis le script Pharmacie.", true);
+    }
+  }, 10000);
+};
+
+window.reponseAuth = function(rep){
+  $("btnValider").disabled = false;
+  if(!rep || !rep.ok){ statut((rep && rep.message) || "Échec de la connexion.", true); return; }
+  authentifie = true;
+  data = rep.data;
+  document.body.classList.remove("demo");
+  $("compteUtilisateur").textContent = rep.email || "";
+  $("voile").classList.remove("show");
+  render();
+};
+
+$("btnBascule").onclick = () => basculer(!modeCreation);
+$("btnDemo").onclick = passerEnDemo;
+$("btnReconnecter").onclick = ouvrirModale;
+["email","mdp","mdp2"].forEach(id => $(id).addEventListener("keydown", e => {
+  if(e.key === "Enter") $("btnValider").click();
+}));
+
+document.body.classList.add("demo");   // démo tant que la connexion n'est pas validée
+basculer(false);
+render();
+</script>
+</body>
+</html>    padding:13px 14px; display:flex; align-items:center; gap:12px;
+  }
+  .med.pris{ opacity:0.45; }
+  .pastille{
+    width:11px; height:11px; border-radius:50%; flex:none;
+    background:var(--f-autre);
+  }
+  .med .infos{ flex:1; min-width:0; }
+  .med .infos .nom{ font-size:15px; font-weight:600; line-height:1.25; }
+  .med .infos .meta{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; display:flex; gap:8px; flex-wrap:wrap; }
+  .stock-bas{ color:var(--alert); font-weight:600; }
+  .rupture-tag{
+    font-size:11px; font-weight:600; color:var(--alert);
+    border:1px solid #E4C6C2; background:var(--alert-bg);
+    border-radius:999px; padding:1px 7px;
+  }
+
+  .check{
+    width:28px; height:28px; border-radius:50%; flex:none;
+    border:1.5px solid var(--line); background:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--ok); font-size:16px;
+  }
+  .check.done{ background:var(--ok); border-color:var(--ok); color:#fff; }
+
+  .actions{
+    display:flex; gap:10px; margin-top:20px;
+  }
+  .btn{
+    flex:1; border-radius:11px; border:1px solid var(--line);
+    background:var(--card); padding:12px 10px; text-align:center;
+    font-size:13.5px; font-weight:600; color:var(--ink); cursor:pointer;
+  }
+  .btn.primaire{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
+
+  section.stock{ margin-top:30px; }
+  section.stock h2{
+    font-family:'Fraunces',serif; font-weight:560; font-size:18px; margin:0 0 10px;
+  }
+  .stock-row{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 0; border-bottom:1px solid var(--line); font-size:14px;
+  }
+  .stock-row:last-child{ border-bottom:none; }
+  .stock-row .nom{ flex:1; }
+  .stock-row .qte{ color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+
+  footer{
+    margin-top:30px; padding-top:14px; border-top:1px solid var(--line);
+    font-size:11.5px; color:var(--ink-soft); display:flex; justify-content:space-between;
+  }
+
+  /* --- mode démo / modale de connexion --- */
+  .demo-badge{
+    display:none; margin-top:8px; font-size:12px; font-weight:600;
+    color:var(--ink-soft); background:#EBE7DB; border-radius:999px;
+    padding:3px 10px; width:fit-content;
+  }
+  body.demo .demo-badge{ display:block; }
+  body.demo .check, body.demo .actions .btn{ opacity:0.4; pointer-events:none; }
+  .demo-badge button{
+    background:none; border:none; font:inherit; color:inherit;
+    text-decoration:underline; cursor:pointer; padding:0;
+  }
+
+  .voile{
+    position:fixed; inset:0; z-index:10;
+    background:rgba(32,48,43,0.45);
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+    display:none; align-items:center; justify-content:center;
+    padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px));
+  }
+  .voile.show{ display:flex; }
+  .modale{
+    width:100%; max-width:380px; background:var(--card);
+    border:1px solid var(--line); border-radius:18px; padding:24px 22px 18px;
+  }
+  .modale h2{ font-family:'Fraunces',serif; font-weight:560; font-size:22px; margin:0 0 4px; }
+  .modale p.sous{ margin:0 0 12px; color:var(--ink-soft); font-size:13.5px; }
+  .modale label{ display:block; font-size:12.5px; color:var(--ink-soft); margin:10px 0 4px; }
+  .modale input{
+    width:100%; padding:11px 12px; font:inherit; font-size:16px;
+    border:1px solid var(--line); border-radius:10px;
+    background:var(--paper); color:var(--ink);
+  }
+  .modale .btn{ width:100%; margin-top:10px; flex:none; }
+  .modale .btn.primaire{ margin-top:16px; }
+  .modale .btn:disabled{ opacity:0.5; }
+  .modale .lien{
+    display:block; width:100%; margin-top:6px; background:none; border:none;
+    font:inherit; font-size:13.5px; color:var(--ink-soft);
+    text-decoration:underline; cursor:pointer; padding:8px;
+  }
+  .modale .statut{ min-height:18px; margin-top:8px; font-size:13px; color:var(--ink-soft); }
+  .modale .statut.erreur{ color:var(--alert); }
+  .cache{ display:none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pharmacie</h1>
+  <p id="sousTitre">—</p>
+  <div class="demo-badge" id="demoBadge">Mode démo — <button id="btnReconnecter">se connecter</button></div>
+</header>
+
+<div class="banner" id="banner"><span>⚠</span><span><b>Rupture signalée</b> — <span id="banniereTexte"></span></span></div>
+
+<nav class="moments" id="moments"></nav>
+
+<div class="liste" id="liste"></div>
+
+<div class="actions">
+  <button class="btn" id="btnValiderTout">Valider tout le moment</button>
+  <button class="btn primaire" id="btnScan">Scanner une boîte</button>
+</div>
+
+<section class="stock">
+  <h2>Stock</h2>
+  <div id="stockListe"></div>
+</section>
+
+<footer>
+  <span id="compteUtilisateur">Non connecté</span>
+  <span id="dateMaj"></span>
+</footer>
+
+<div class="voile show" id="voile">
+  <div class="modale">
+    <h2 id="modaleTitre">Connexion</h2>
+    <p class="sous" id="modaleSous">Accédez à votre pharmacie.</p>
+
+    <label for="email">E-mail</label>
+    <input id="email" type="email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+
+    <label for="mdp">Mot de passe</label>
+    <input id="mdp" type="password" autocomplete="current-password">
+
+    <div id="blocConfirm" class="cache">
+      <label for="mdp2">Confirmer le mot de passe</label>
+      <input id="mdp2" type="password" autocomplete="new-password">
+    </div>
+
+    <button class="btn primaire" id="btnValider">Se connecter</button>
+    <button class="btn" id="btnBascule">1re connexion</button>
+    <button class="lien" id="btnDemo">Continuer sans me connecter</button>
+    <div class="statut" id="statut"></div>
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------
+   Données : la page démarre TOUJOURS en mode démo (dataExemple,
+   fonctions désactivées). Les vraies données ne sont envoyées par
+   Scriptable qu'après une connexion validée côté Scriptable
+   (Keychain) : la page dépose une demande dans window.__demande,
+   Scriptable la lit, la vérifie, puis appelle window.reponseAuth().
+------------------------------------------------------------------ */
+
+const FORME_COULEUR = {
+  "comprimé": "var(--f-comprime)",
+  "gélule": "var(--f-gelule)",
+  "sirop": "var(--f-sirop)",
+  "injection": "var(--f-injection)",
+  "patch": "var(--f-patch)",
+  "goutte": "var(--f-goutte)",
+};
+
+const MOMENTS = ["matin", "midi", "soir", "coucher"];
+
+const dataExemple = {
+  medicaments: [
+    { cip13:"3400930000001", nom:"Doliprane 1000mg", forme:"comprimé", couleur:null, stock:12, seuil_alerte:4, moments:["matin","soir"], rupture_nationale:false },
+    { cip13:"3400930000002", nom:"Levothyrox 75µg", forme:"comprimé", couleur:null, stock:3, seuil_alerte:5, moments:["matin"], rupture_nationale:true },
+    { cip13:"3400930000003", nom:"Vitamine D", forme:"gélule", couleur:null, stock:20, seuil_alerte:5, moments:["matin"], rupture_nationale:false },
+    { cip13:"3400930000004", nom:"Toplexil", forme:"sirop", couleur:null, stock:1, seuil_alerte:2, moments:["soir","coucher"], rupture_nationale:false },
+  ],
+  historique_prises: []
+};
+
+let data = JSON.parse(JSON.stringify(dataExemple));   // démo par défaut
+let authentifie = false;
+let momentActif = MOMENTS[0];
+window.getData = () => JSON.stringify(data);          // lu par Scriptable pour sauvegarder
+
+// Les libellés réels de forme_pharma (base gouvernementale) sont
+// composés, ex: "comprimé pelliculé sécable", "poudre pour solution
+// buvable en sachet-dose" — on fait donc une correspondance par
+// mot-clé plutôt qu'une égalité stricte sur `forme`.
+const MOTS_CLES_FORME = [
+  ["comprimé", "f-comprime"],
+  ["gélule", "f-gelule"],
+  ["capsule", "f-gelule"],
+  ["sirop", "f-sirop"],
+  ["solution buvable", "f-sirop"],
+  ["suspension buvable", "f-sirop"],
+  ["injectable", "f-injection"],
+  ["patch", "f-patch"],
+  ["dispositif transdermique", "f-patch"],
+  ["goutte", "f-goutte"],
+  ["collyre", "f-goutte"],
+];
+
+function couleurForme(m){
+  if(m.couleur) return m.couleur;
+  const forme = (m.forme || "").toLowerCase();
+  const trouve = MOTS_CLES_FORME.find(([mot]) => forme.includes(mot));
+  return trouve ? `var(--${trouve[1]})` : "var(--f-autre)";
+}
+
+function estPrisAujourdhui(cip13, moment){
+  const aujourdhui = new Date().toISOString().slice(0,10);
+  return data.historique_prises.some(p => p.cip13===cip13 && p.moment===moment && p.date===aujourdhui);
+}
+
+function marquerPris(cip13, moment){
+  if(!authentifie) return;
+  const aujourdhui = new Date().toISOString().slice(0,10);
+  if(estPrisAujourdhui(cip13, moment)) return;
+  data.historique_prises.push({date:aujourdhui, moment, cip13, heure_confirmee:new Date().toTimeString().slice(0,5)});
+  // Scriptable relit window.getData() et sauvegarde dans pharmacie.json (iCloud)
+  render();
+}
+
+function renderNav(){
+  const nav = document.getElementById("moments");
+  nav.innerHTML = "";
+  MOMENTS.forEach(m => {
+    const b = document.createElement("button");
+    b.textContent = m.charAt(0).toUpperCase()+m.slice(1);
+    if(m===momentActif) b.classList.add("active");
+    b.onclick = () => { momentActif = m; render(); };
+    nav.appendChild(b);
+  });
+}
+
+function renderListe(){
+  const liste = document.getElementById("liste");
+  liste.innerHTML = "";
+  const meds = data.medicaments.filter(m => m.moments.includes(momentActif));
+  if(meds.length===0){
+    liste.innerHTML = `<p style="color:var(--ink-soft); font-size:13.5px; padding:10px 2px;">Rien de prévu à ce moment.</p>`;
+    return;
+  }
+  meds.forEach(m => {
+    const pris = estPrisAujourdhui(m.cip13, momentActif);
+    const stockBas = m.stock <= m.seuil_alerte;
+    const el = document.createElement("div");
+    el.className = "med" + (pris ? " pris" : "");
+    el.innerHTML = `
+      <span class="pastille" style="background:${couleurForme(m)}"></span>
+      <div class="infos">
+        <div class="nom">${m.nom}</div>
+        <div class="meta">
+          <span class="${stockBas ? "stock-bas" : ""}">${m.stock} en stock</span>
+          ${m.rupture_nationale ? `<span class="rupture-tag">Rupture</span>` : ""}
+        </div>
+      </div>
+      <button class="check ${pris ? "done" : ""}" title="Valider la prise">${pris ? "✓" : ""}</button>
+    `;
+    el.querySelector(".check").onclick = () => marquerPris(m.cip13, momentActif);
+    liste.appendChild(el);
+  });
+}
+
+function renderStock(){
+  const cont = document.getElementById("stockListe");
+  cont.innerHTML = "";
+  data.medicaments.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).forEach(m => {
+    const row = document.createElement("div");
+    row.className = "stock-row";
+    row.innerHTML = `
+      <span class="pastille" style="background:${couleurForme(m)}"></span>
+      <span class="nom">${m.nom}</span>
+      <span class="qte ${m.stock<=m.seuil_alerte ? "stock-bas":""}">${m.stock}</span>
+    `;
+    cont.appendChild(row);
+  });
+}
+
+function renderBanniere(){
+  const enRupture = data.medicaments.filter(m => m.rupture_nationale);
+  const banner = document.getElementById("banner");
+  if(enRupture.length){
+    banner.classList.add("show");
+    document.getElementById("banniereTexte").textContent = enRupture.map(m=>m.nom).join(", ");
+  } else {
+    banner.classList.remove("show");
+  }
+}
+
+function render(){
+  renderNav();
+  renderListe();
+  renderStock();
+  renderBanniere();
+  const total = data.medicaments.reduce((s,m)=>s+ (m.moments.includes(momentActif)?1:0),0);
+  document.getElementById("sousTitre").textContent = `${total} médicament${total>1?"s":""} — ${momentActif}`;
+  document.getElementById("dateMaj").textContent = new Date().toLocaleDateString("fr-FR", {day:"numeric", month:"short"});
+}
+
+document.getElementById("btnValiderTout").onclick = () => {
+  if(!authentifie) return;
+  data.medicaments.filter(m => m.moments.includes(momentActif)).forEach(m => marquerPris(m.cip13, momentActif));
+};
+
+document.getElementById("btnScan").onclick = () => {
+  if(!authentifie) return;
+  // TODO : à remplacer par l'appel vers le Raccourci de scan (ex: window.location = "shortcuts://run-shortcut?name=Scanner%20une%20boite")
+  alert("Ouverture du scanner — à relier au Raccourci de scan Datamatrix.");
+};
+
+/* ---------- Connexion (vérifiée côté Scriptable) ---------- */
 const EMAIL_PAR_DEFAUT = "hisaux@icloud.com";
 let modeCreation = false;
 let demandeId = 0;
